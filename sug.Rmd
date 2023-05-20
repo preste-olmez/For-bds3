@@ -1,0 +1,404 @@
+---
+title: "sug"
+author: "O.M."
+date: "29 10 2021"
+output:
+  word_document: default
+  html_document: default
+---
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(ggstatsplot)
+library(vip)
+library(poissonreg)
+library(DataExplorer)
+library(haven)
+library(data.table)
+library(outliers)
+library(finetune)
+library(poissonreg)
+library(factoextra)
+library(ggstatsplot)
+
+library(writexl)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+
+df1<-read_xpt("DR1TOT_J.XPT")
+dfdemo<-read_xpt("DEMO_J.XPT")
+write_xlsx(df1, "day1total.xslx")
+write_xlsx(dfdemo, "demog.xslx")
+df1<-merge(dfdemo, df1, by="SEQN")#joining with demographic data
+#df1
+str(df1)#looking on structure
+summary(df1)#and some basic characteristcs of data
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+attributes=c("Id", "This variable is used to identify whether a participant was both interviewed at home and examined in the mobile examination center", "Age in years", "Age in months", "six-month time period when the examination was performed", "This is the race-ethnicity variable(Mexican American-1, Other Hispanic-2, Non-Hispanic White-3, Non-Hispanic Black-4, Other Race - Including Multi-Racial-5)" ,  "country of birth(1)", "Citizenship status", "marital status", "Pregnancy status", "number of years the participant has lived in the United States", "highest grade or level of education completed by participants 6-19 years of age", "This variable is the highest grade or level of education completed by adults 20 years and older.", "his is a variable included in the demographics file since the 2011-2012 survey cycle to provide information on whether the participant has ever served on active duty in the U.S. Armed Forces", "whether the participant has ever served in a foreign country during a time of armed conflict", " This variable indicates the language ", "This variable denotes whether a proxy respondent was used", "This variable denotes whether an interpreter was used", "This variable indicates the language", "This variable indicates the language used during the family questionnaire interview", "This variable denotes whether a proxy respondent was used to complete the family questionnaire interview", "This variable denotes whether a proxy respondent was used to complete the family questionnaire interview", "This variable denotes whether a proxy respondent was used to complete the family questionnaire interview", "This variable denotes whether a proxy respondent was used to complete the family questionnaire interview", "This variable denotes whether an interpreter was used to complete the family questionnaire interview", "This variable indicates the language", "This variable denotes whether a proxy respondent was used", "This variable denotes whether an interpreter was used", "This variable indicates the language used for the audio-computer-assisted self-interview", "his variable indicates the total annual family income or annual individual income", "This variable is the ratio of family income to poverty", "This variable indicates the total annual household income in dollar ranges","This variable is the number of people", "This variable is the number of people in the participant’s family.", "This variable is the number of people in the participant’s household.", "This variable is the number of children aged 5 years or younger living in the participant’s household.","suplemetary columns", "Interwiewer ID", "Time of inerwiew", "Does hepl needed dyring interwiew", "This variable is the number of children aged 6-17 years old living in the participant’s household", "This variable is the number of adults aged 60 years or older living in the participant’s household")
+attributes2<-c("The household reference person is defined as the first household member 18 years of age or older listed on the household member roster", "Dietary day one sample weight", "Dietary two-day sample weight", "Dietary recall status", "Interviewer ID code", "Breast-fed infant (either day)", "Number of days of intake", "of days b/w intake and HH interview", "Intake day of the week", "Language respondent used mostly", "Main respondent for this interview", "Helped in responding for this interview", "Type of table salt used", "How often add salt to food at table", "	Salt used in preparation?", "Salt used at table yesterday?", "Type of salt used yesterday", " On special diet?", "Weight loss/Low calorie diet", "Low fat/Low cholesterol diet", "Low salt/Low sodium diet", "Sugar free/Low sugar diet", "	Low fiber diet", "High fiber diet", "	Diabetic diet", "Weight gain/Muscle building diet","Low carbohydrate diet", "High protein diet", "Gluten-free/Celiac diet", "	Renal/Kidney diet", "	Other special diet", "Number of foods/beverages reported", "	Energy (kcal)", "Protein (gm)", "Carbohydrate (gm)", "Total sugars (gm)", "Dietary fiber (gm)", "Total fat (gm)", "Total saturated fatty acids (gm)", "Total monounsaturated fatty acids (gm)", "	Total polyunsaturated fatty acids (gm)", "Cholesterol (mg)", "Vitamin E as alpha-tocopherol (mg)", "	Added alpha-tocopherol (Vitamin E) (mg)", "Retinol (mcg)","Vitamin A, RAE (mcg)", "Alpha-carotene (mcg)", "Beta-carotene (mcg)", "Beta-cryptoxanthin (mcg)", "Lycopene (mcg)", "Lutein + zeaxanthin (mcg)", "Thiamin (Vitamin B1) (mg)", "	Riboflavin (Vitamin B2) (mg)", "Niacin (mg)", "Niacin (mg)",  "	Vitamin B6 (mg)", "Total folate (mcg)", "Folic acid (mcg)", "	Food folate (mcg)", "	Folate, DFE (mcg)", "Total choline (mg)", "Vitamin B12 (mcg)", "	Added vitamin B12 (mcg)", "Vitamin C (mg)", "Vitamin D (D2 + D3) (mcg)", "Vitamin K (mcg)", "	Calcium", "	Phosphorus (mg)", "	Magnesium (mg)", "Iron (mg)", "Zinc (mg)", "	Copper (mg)", "Sodium (mg)","Potassium (mg)", "Selenium (mcg)", "Caffeine (mg)", "Theobromine (mg)","Alcohol (gm)", "Moisture (gm)", "SFA 4:0 (Butanoic) (gm)", "SFA 6:0 (Hexanoic) (gm)")
+attributes3<-c("SFA 8:0 (Octanoic) (gm)", "SFA 10:0 (Decanoic) (gm)", "	SFA 12:0 (Dodecanoic) (gm)", "SFA 14:0 (Tetradecanoic) (gm)", "SFA 16:0 (Hexadecanoic) (gm)", "SFA 18:0 (Octadecanoic) (gm)", "	MFA 16:1 (Hexadecenoic) (gm)", "MFA 18:1 (Octadecenoic) (gm)", "	MFA 20:1 (Eicosenoic) (gm)", "MFA 22:1 (Docosenoic) (gm)", "PFA 18:2 (Octadecadienoic) (gm)", "PFA 18:3 (Octadecatrienoic) (gm)", "PFA 18:4 (Octadecatetraenoic) (gm)", "PFA 18:4 (Octadecatetraenoic) (gm)", "PFA 18:4 (Octadecatetraenoic) (gm)", "PFA 22:5 (Docosapentaenoic) (gm)", "PFA 22:6 (Docosahexaenoic) (gm)", "Compare food consumed yesterday to usual", "	Total plain water drank yesterday (gm)", "Total tap water drank yesterday (gm)", "Total bottled water drank yesterday (gm)","Tap water source", "	Shellfish eaten during past 30 days", "Clams eaten during past 30 days", "# of times clams eaten in past 30 days", "Crabs eaten during past 30 days", "of times crabs eaten in past 30 days", "Crayfish eaten during past 30 days", "of times crayfish eaten past 30 days", "Lobsters eaten during past 30 days", "of times lobsters eaten past 30 days","Mussels eaten during past 30 days", "of times mussels eaten in past 30 days", "Oysters eaten during past 30 days", "of times oysters eaten in past 30 days", "Scallops eaten during p", "of times scallops eaten past 30 days", "Shrimp eaten during past 30 days", "# of times clams eaten in past 30 days",  "of times shrimp eaten in past 30 days", "Other shellfish eaten ", "of times other shellfish eaten", "Other unknown shellfish eaten past 30 d", "of times other unknown shellfish eaten", "	Refused on shellfish eaten past 30 days", "	Fish eaten during past 30 days", "	Breaded fish products eaten ", "# of times breaded fish products eaten", "Tuna eaten during past 30 days", "# of times tuna eaten in past 30 days", "Bass eaten ", "	# of times bass eaten in past 30 days", "Catfish eaten during past 30 days",   "Catfish eaten during past 30 days", "Catfish eaten during past 30 days",  "	# of times catfish eaten in past 30 days", "Cod eaten ", "# of times cod eaten in past 30 days", "	Flatfish eaten during past 30 days", "# of times flatfish eaten past 30 days", "Haddock eaten ",  "# of times haddock eaten in past 30 days", "	Mackerel eaten during past 30 days", "# of times mackerel eaten past 30 days", "	Perch eaten", "	# of times perch eaten in past 30 days", "	Pike eaten during past 30 days", "# of times pike eaten in past 30 days", "Pollock eaten during past 30 days", "	# of times pollock eaten in past 30 days", "	Porgy eaten during past 30 days", "# of times porgy eaten in past 30 days", "Salmon eaten during past 30 days", "# of times salmon eaten in past 30 days", "Sardines eaten during past 30 days", "	# of times sardines eaten past 30 days", "Sea bass eaten during past 30 days", "# of times sea bass eaten past 30 days","Shark eaten during past 30 days", "# of times swordfish eaten past 30 days",  "# of times swordfish eaten past 30 days" , "	Trout eaten during past 30 days", "# of times trout eaten in past 30 days", "Walleye eaten during past 30 days", "# of times walleye eaten in past 30 days", "	Other fish eaten during past 30 days", "# of times other fish eaten past 30 days", "Other unknown fish eaten in past 30 days", "# of times other unknown fish eaten", "Refused on fish eaten past 30 days")
+attributes<-c(attributes, attributes2, attributes3)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+Data_Dictionary<-tibble(names=colnames(df1), data_type=c("integer", "integer", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor",  "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "numeric", "numeric", "factor", "factor", "factor", "factor", "factor", "factor", "factor",  "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "numeric", "numeric", "factor", "factor", "factor", "factor", "numeric", "numeric", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric",  "numeric",  "numeric", "numeric", "numeric", "numeric", "numeric",  "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "factor",  "numeric", "numeric", "numeric", "factor", "factor", "factor", "factor","factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor", "factor"), values=lapply(df1, range, na.rm = TRUE), atributes=attributes)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+print(tbl_df(Data_Dictionary), n=213)
+```
+]
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+namesdf1<-names(df1)
+plot_missing(df1)
+dfsee<-ifelse(is.na(df1[, 147:213]), 0, 1)#NA in this columns really is zero, so we should change it to zero, 
+dfsee<-as.data.frame(dfsee)
+df1<-df1%>%select(-(10:19),-(59:76), -(147:213), -RIDAGEMN, -DMDHSEDZ)#then we should drop columns with to big number of real NAs
+
+df1<-cbind(df1, dfsee)#backjoining our df
+
+df<-drop_na(df1)#droping last NAs
+plot_missing(df)#and just cheking 
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+#for outlier removal we will use a custom function, remove)outliers and remove_All_outliers
+#these functions will remove outliers based on 0.05 and 0.95 quantilies. 
+
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  qnt <- quantile(x, probs=c(.05, .95), na.rm = na.rm, ...)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  y
+}
+
+remove_all_outliers <- function(df){
+  a<-df[,sapply(df, is.numeric), drop = FALSE]
+  b<-df[,sapply(df, Negate(is.numeric)), drop = FALSE]
+
+  a[]<-lapply(a, function(x) remove_outliers(x))
+  d<-cbind(a,b)
+  d[, names(df)]
+}
+
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,  results='hide'}
+
+finaldf<-drop_na((remove_all_outliers(df)))#removing of outliers and getting clean df
+```
+
+
+Technique part
+___________________________________
+Firstly we will try to make use out of the cluster analysis method, by using the simple kmeans method(which should calculate distance between observations and throw them to distinct clusters). To define a number of clusters we will use grid search while comparing results with each other choosing the best. Calculating efficiency we will, by calculating within the sum of squares, through fviz_nbclust function, from factoextra package. Our calculations show that the best amount of clusters on that data should be 2 or 3, we will work with 3. 
+
+
+```{r, warning=FALSE, message=FALSE}
+#We can try to use kmeans clustering to get additional info from our data, for evaluating the right amount of clusters we will use the nbclust function with 3 #different assessment methods. 
+fviz_nbclust(finaldf, FUNcluster = kmeans, method="wss")# on a plot of within sum of squares, we can see elbow, curve, on 2-3
+fviz_nbclust(finaldf, FUNcluster = kmeans, method="gap_stat")# this automatic method says that the best amount of clusters should be 3
+fviz_nbclust(finaldf, FUNcluster = kmeans, method="silhouette")#and this say that 2
+```
+
+Then we will calculate our clustering, and add data created by our cluster analysis, to our data, to make use of it in later parts of work.
+```{r}
+#adding our clusters to our data
+cls<-kmeans(finaldf, 3)
+finaldf$clust<-cls$cluster
+```
+
+Plots were created with ggstatplot package which allows us to join the plotting and statistic analysis part of EDA. 
+Here we plot the amount of sugar consumed and 15 income groups, and looking at the plot we don't see any significant difference(significant differences are marked with * in this type of plot), which the pairwise Games-Howell test can detect. So we can say that income does not have any influence on sugar consumption. 
+```{r, warning=FALSE, message=FALSE}
+dffo_plot<-finaldf
+dffo_plot$INDHHIN2<-as.factor(finaldf$INDHHIN2)
+ggplot(data=dffo_plot, aes(x=as.numeric(INDHHIN2), y=DR1TSUGR))+geom_smooth()#looks like no trend can be seen  for income and sugar
+ggbetweenstats(dffo_plot, x=INDHHIN2, y=DR1TSUGR)#we did not see any significant difference between income groups and sugar consumption
+```
+
+
+Then we will compare sugar consumption between the sexes. In this case, the welch t-test also does not show significant differences between groups. 
+```{r, warning=FALSE, message=FALSE}
+dffo_plot$RIAGENDR<-as.factor(finaldf$RIAGENDR)
+ggbetweenstats(dffo_plot, x=RIAGENDR, y=DR1TSUGR)#and no importance between genders
+```
+Then we will try to plot age versus sugar consumption, generally, we see some trend when sugar consumption increase from childhood to 35, then it goes down. But confidence intervals do not allow us to say that this trend is significant. Then we try to classify our ages into 4 groups and compare them between each other. This time Games-Howell test also doesn't show any significant difference.  So we can say that sugar consumption doesnt rely on age.
+
+```{r, warning=FALSE, message=FALSE}
+ggplot(data=dffo_plot, aes(x=as.numeric(RIDAGEYR), y=DR1TSUGR))+geom_smooth()#ages show increase of sugar consumption with age, which stops near 40, and them goes down
+dffo_plot$RIDAGEYR<-as.numeric(dffo_plot$RIDAGEYR)
+dffo_plot$forage<-as.factor(ifelse(dffo_plot$RIDAGEYR<=18, 1, ifelse(dffo_plot$RIDAGEYR<=30, 2, ifelse(dffo_plot$RIDAGEYR<=50, 3, 4))))
+ggbetweenstats(dffo_plot, x=forage, y=DR1TSUGR)#and only importance between groups with 30-50, and 50-64
+dffo_plot$forage<-NULL
+```
+Now we will plot racial groups against sugar, here we have 7 groups, and the Games-Howell test says that 3(White ) significantly differs from 6(Asian), so we can say that racial groups have some influence on sugar consumption but not very much.
+```{r, warning=FALSE, message=FALSE}
+dffo_plot$RIDRETH1<-as.factor(finaldf$RIDRETH1)
+dffo_plot$RIDRETH3<-as.factor(finaldf$RIDRETH3)
+ggbetweenstats(dffo_plot, x=RIDRETH1, y=DR1TSUGR)# we didn't see any difference between race for Hispanic
+ggbetweenstats(dffo_plot, x=RIDRETH3, y=DR1TSUGR)# and here we see difference between Non-Hispanic White and 	Non-Hispanic Asian
+```
+
+
+Lastly, we will try to find a difference in sugar consumption between language groups. 
+And our test says us that we cannot observe any significant influence of language on sugar consumption. 
+
+```{r, warning=FALSE, message=FALSE}
+
+dffo_plot$SIALANG<-as.factor(finaldf$SIALANG)
+
+ggbetweenstats(dffo_plot, x=SIALANG, y=DR1TSUGR)# and now difference for languages
+```
+Now we will look at correlation - for that we will build some correlation matrix, we will split some into 10 different matrices to make them look better. Looking at the results we can say that nor age, nor language, education, or income has a significant influence on sugar consumption. But we can see a small but significant correlation with gender. Then proceeding to the nutrition part we can see that the total amount of carbohydrates, fats, fibers, and other nutrient types are highly correlated with sugar consumption. Then we see that specific diets also have connections with sugar intake. Lastly looking at on intake of seafood, we don't see any significant connection between it and sugar.  
+
+Some highlhy correlated variables says that principal component analysis can be used in this case.
+
+
+```{r, warning=FALSE, message=FALSE}
+gc()
+finaldf%>%select(1:15, DR1TSUGR)%>%ggcorrmat()#looking on correlation we did not see any correlation with language and age, only with Gender
+finaldf%>%select(16:30, DR1TSUGR)%>%ggcorrmat()# we didn't see significant importance for variables indicating languages, country, age in month and race 
+finaldf%>%select(31:45, DR1TSUGR)%>%ggcorrmat()# we didn't see significant importance for variables indicating education, income, people in the household
+finaldf%>%select(46:60, DR1TSUGR)%>%ggcorrmat()# great importance can be seen with total amount of carbohydrates, fats, fibers and other nutrient types. 
+finaldf%>%select(61:75, DR1TSUGR)%>%ggcorrmat()# we see big value of importance in correlation between diet and sugar intake. 
+finaldf%>%select(76:90, DR1TSUGR)%>%ggcorrmat()#also we see importance of other nutrients elements
+finaldf%>%select(91:105, DR1TSUGR)%>%ggcorrmat()
+finaldf%>%select(106:120, DR1TSUGR)%>%ggcorrmat()
+finaldf%>%select(121:136, DR1TSUGR)%>%ggcorrmat()#and practicaly we did not see any importance of seafood types 
+finaldf%>%select(137:154, DR1TSUGR)%>%ggcorrmat()
+finaldf%>%select(155:170, DR1TSUGR)%>%ggcorrmat()
+finaldf%>%select(171:183, DR1TSUGR)%>%ggcorrmat()
+```
+
+Machine learning part
+___________________________
+Now we will split our data in training part, and testnig part to evaluate its accuracy.
+
+
+
+
+```{r}
+splitt<-initial_split(finaldf, prop = 0.8)
+train<-training(splitt)
+test<-testing(splitt)
+```
+To build a machine learning model we will use tidymodels ecosystem which allows us to unify work with different types of models.
+First of all, we created a recipe, where we indicate our target variable and our data. Then cause previously we decided to use PCA, we need first to normalize our data. We will do it with step_scale, and we will pass only numeric columns to this function. Then after normalization is applied we can go to the PCA part and we can specify the threshold - the amount of variation which should our PC explain. 
+Then we specify the type model - in this case, it should be simple linear regression,  but we will evaluate the value for regularisation and penalty by a grid Search. 
+we will do a grid search(just trying different types of parameters on different parts of the data amount of times defined by our vfold cross-validation) and choosing the best) of parameters by tune_Race_anova, which should save our time by eliminating from race those parameters which look bad and proceeding with only good ones. With large datasets, or a large number of parameters that need to be tuned tune_Race_Anova can save tons of time. 
+After getting the best values for penalty and mixture, we can take a look at variable importance obtained with vip function: looking at the most important features of these model, we can see that it use information about total carbohydrates intake, amount of kcal consumed, the language of interview, the total amount of fat, respondent language, and our PC, which cannot be decoded. 
+Lastly, we pass our best combinations of parameters to our workflow and collect predictions which our model made. 
+Calculating rmse between these predictions and actual data shows that our model performs poorly.
+
+
+```{r}
+recip<-recipe(DR1TSUGR~., data=train)%>%#we must scale all numeric features, for PCA
+  step_scale(34:36, 47:50, 52:114)%>%
+  step_select(-SEQN,-DR1DRSTZ, -DR1EXMER, -DR1MRESP, -DR1HELP, -DR1TATOA, -DR1TALCO, -DR1_300, -DRABF, -DR1TWSZ, -DRD340, -DRD350CQ)%>%#I will remove columns with additional information, ID, etc., and columns with zero variance like DR1_300, and total carbohydrates amount.  
+  step_pca(34:36, 47:50, 52:114, threshold = 0.9)#.%>%#Then we can ran PCA itself, looking on 90% of variation from our df.
+  #prep()%>%
+  #bake(train)
+
+Lmodel<-linear_reg(penalty = tune(), mixture = tune())%>%
+  set_engine("glmnet")%>%
+  set_mode("regression")
+
+linrkfl <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(Lmodel)
+
+  
+folds <- vfold_cv(train,strata=DR1TSUGR, v=7)
+gridvals<-expand_grid(penalty=seq(0, 1, 0.1), mixture=seq(0, 1, 0.1))
+doParallel::registerDoParallel()
+anovatuned<-tune_race_anova(linrkfl, 
+                            resamples=folds, 
+                            grid=gridvals, 
+                            metrics= metric_set(rmse, mae), 
+                            control = control_race(verbose_elim = TRUE))
+
+plot_race(anovatuned)#all models which tune race anova was checked 
+show_best(anovatuned)
+
+
+fit2 <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(Lmodel)%>%
+  fit(data=train)
+
+extract_fit_parsnip(fit2) %>%
+  vip(geom = "point", num_features = 30)
+
+fit2 <- fit2 %>%
+  finalize_workflow(select_best(anovatuned, "rmse")) %>%
+  last_fit(splitt)
+
+collin<-collect_predictions(fit2) %>%
+  rmse(DR1TSUGR, .pred)
+collin#looking on accuracy of our model 
+
+
+```
+
+
+Our next model should generally take the sane workflow, except that this time we won't use PCA. 
+Looking at the results of this model we can say looks better, it takes use out of the total amount of carbohydrates, calories, amount of sodium, and proteins consumed, also for some reason we see the importance of selen, and moisture.
+```{r}
+recip<-recipe(DR1TSUGR~ ., data=train)%>%
+  step_scale(34:36, 47:50, 52:116)%>%
+  step_select(-SEQN,-DR1DRSTZ, -DR1EXMER, -DR1MRESP, -DR1HELP, -DR1TATOA, -DR1TALCO, -DR1_300, -DRABF, -DR1TWSZ, -DRD340, -DRD350CQ)#%>%#  
+   #For this model we wont run PCA
+  #step_pca(28, 29, 34:36, 47:50, 52:116, threshold = 0.9)#%>%
+  #prep()%>%
+  #bake(train)
+
+Lmodel<-linear_reg(penalty = tune(), mixture = tune())%>%
+  set_engine("glmnet")%>%
+  set_mode("regression")
+
+linrkfl <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(Lmodel)
+
+folds <- vfold_cv(train,strata=DR1TSUGR, v=10)
+gridvals<-expand_grid(penalty=seq(0, 1, 0.1), mixture=seq(0, 1, 0.1))
+doParallel::registerDoParallel()
+anovatuned<-tune_race_anova(linrkfl, resamples=folds, grid=gridvals, metrics= metric_set(rmse, mae), control = control_race(verbose_elim = TRUE))
+
+plot_race(anovatuned)
+show_best(anovatuned)
+
+
+fit2 <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(Lmodel)%>%
+  fit(data=train)
+
+extract_fit_parsnip(fit2) %>%
+  vip(geom = "point", num_features = 30)
+
+fit2 <- fit2 %>%
+  finalize_workflow(select_best(anovatuned, "rmse")) %>%
+  last_fit(splitt)
+
+collin<-collect_predictions(fit2) %>%
+  rmse(DR1TSUGR, .pred)
+collin
+
+preds<-collect_predictions(fit2)
+```
+Then we will try to use Poisson regression, which is mostly used for stochastic modeling. Generally, every process in a world is a Poisson process, so we can use Poisson regression in this case. 
+For this model, we won't use PCA.
+Based on rmse this model looks similar to others, it takes to use out of the total amount of carbohydrates, fats, calories, amount of sodium, and for some reason if a person eats bearded fish.
+  
+
+```{r}
+recip<-recipe(DR1TSUGR~ ., data=train)%>%
+  step_scale(34:36, 47:50, 52:116)%>%
+  step_select(-SEQN,-DR1DRSTZ, -DR1EXMER, -DR1MRESP, -DR1HELP, -DR1TATOA, -DR1TALCO, -DR1_300, -DRABF, -DR1TWSZ, -DRD340, -DRD350CQ)#%>%#  
+   #For this model we wont run PCA
+  #step_pca(28, 29, 34:36, 47:50, 52:116, threshold = 0.9)#%>%
+  #prep()%>%
+  #bake(train)
+
+poismodel<-poisson_reg(penalty = tune(), mixture = tune())%>%
+  set_engine("glmnet")%>%
+  set_mode("regression")#for this model we will use poisson_regression, and evaluate same parameters as for linear regression 
+
+poisrkfl <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(poismodel)
+
+  
+folds <- vfold_cv(train,strata=DR1TSUGR, v=7)
+gridvals<-expand_grid(penalty=seq(0, 1, 0.1), mixture=seq(0, 1, 0.1))
+#doParallel::registerDoParallel()
+anovatunedpois<-tune_race_anova(poisrkfl, resamples=folds, grid=gridvals, metrics= metric_set(rmse, mae), control = control_race(verbose_elim = TRUE))
+
+plot_race(anovatunedpois)
+show_best(anovatunedpois)
+
+
+fitpois <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(poismodel)%>%
+  fit(data=train)
+
+extract_fit_parsnip(fitpois) %>%
+  vip(geom = "point", num_features = 30)
+
+
+fitpois <- fitpois %>%
+  finalize_workflow(select_best(anovatunedpois, "rmse")) %>%
+  last_fit(splitt)
+
+colpois<-collect_predictions(fitpois) %>%
+  rmse(DR1TSUGR, .pred)
+colpois
+
+predspois<-collect_predictions(fitpois)
+```
+
+Lastly, we will try to use simple linear regression with the polynomial fit which can be useful when the relationship between variables goes on quadratic equations. To do this we will square our numeric variables, by step_poly. 
+This model looks better than others but not a lot. This model takes to use out of the amount of Sodium, Selen, moisture, thiamin, amount of other microelements and acids, which were squared. 
+```{r}
+recip<-recipe(DR1TSUGR~ ., data=train)%>%
+  step_scale(34:36, 47:50, 52:116)%>%
+  step_select(-SEQN,-DR1DRSTZ, -DR1EXMER, -DR1MRESP, -DR1HELP, -DR1TATOA, -DR1TALCO, -DR1_300, -DRABF, -DR1TWSZ, -DRD340, -DRD350CQ)%>%
+  step_poly(52:90, degree=1.7)#%>%# for this model we use poly regression to improve our results 
+  #prep()%>%
+  #bake(train)
+
+
+Lmodel<-linear_reg(penalty = tune(), mixture = tune())%>%
+  set_engine("glmnet")%>%
+  set_mode("regression")
+
+linrkfl <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(Lmodel)
+
+folds <- vfold_cv(train,strata=DR1TSUGR, v=7)
+gridvals<-expand_grid(penalty=seq(0, 1, 0.1), mixture=seq(0, 1, 0.1))
+#doParallel::registerDoParallel()
+anovatuned<-tune_race_anova(linrkfl, resamples=folds, grid=gridvals, metrics= metric_set(rmse, mae), control = control_race(verbose_elim = TRUE))
+
+plot_race(anovatuned)
+show_best(anovatuned)
+
+
+fit2 <- workflow() %>%
+  add_recipe(recip) %>%
+  add_model(Lmodel)%>%
+  fit(data=train)
+
+lrimp<-extract_fit_parsnip(fit2) %>%vi(scale=TRUE)
+extract_fit_parsnip(fit2) %>%
+  vip(geom = "point", num_features = 30)
+
+fit2 <- fit2 %>%
+  finalize_workflow(select_best(anovatuned, "rmse")) %>%
+  last_fit(splitt)
+
+collin<-collect_predictions(fit2) %>%
+  rmse(DR1TSUGR, .pred)
+collin
+
+preds<-collect_predictions(fit2)
+```
+________________________
+Summary
+
+
+So we did not see any statistically significant difference in Sugar consumption between ages, sexes, income groups, and just a bit between racial groups.
+Most predictors important for these tasks were connected with nutrition and dietary preferences. We see that PCA significantly decreases the accuracy of our models(which is a normal thing but the main function of PCA is to reduce the amount of dimension to make model tuning faster), so we can say that PCA should not be used in this case. Then we see that simple linear regression and Poisson regression works poorly in this case. Polynomial regression works just slightly better, which indicates that the relationship between sugar consumption and variables should look something like that: sugar~important_varible^2+some_other_variable. Also, we can say that this data is very noisy, and maybe if we keep outliers(and usually we should keep them, practically in all cases their removal is a mistake), and if we impute our NAS with mean or median we can get more data to analyze, and maybe to better analysis of our data. 

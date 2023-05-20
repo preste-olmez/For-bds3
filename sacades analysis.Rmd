@@ -1,0 +1,1254 @@
+---
+title: "Viz for sacades"
+author: "O.M."
+date: "04 05 2022"
+output: html_document
+---
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggstatsplot)
+library(paletteer)
+library(dunn.test)
+library(plotrix)
+library(pheatmap)
+library(data.table)
+df<-read.csv("saccade_report_full.csv")
+```
+
+**1**  .
+```{r}
+df1<-df%>%filter(TRIAL_LABEL=="CTRL")
+df2<-df%>%filter(TRIAL_LABEL=="AE")
+df3<-df%>%filter(TRIAL_LABEL=="GMI")
+
+dfprob<-matrix(nrow=1000, ncol=nrow(df))
+dfprob[, 1]=1:1000
+df<-drop_na(df)
+
+try(for (j in 2:(nrow(df)+1)){
+  for(i in 1:nrow(dfprob)){
+ if(df$start_time[j]<=i&&df$end_time[j]>=i){
+    dfprob[i, j]=1
+  }else
+    {dfprob[i, j]=0
+}    
+  }
+})
+
+
+dfprob<-dfprob%>%as.data.frame()
+dfprob$probs<-rowSums(dfprob[,-1], na.rm=T)
+
+
+dfprob1<-matrix(nrow=1000, ncol=nrow(df1))
+dfprob1[, 1]=1:1000
+df1<-drop_na(df1)
+
+try(for (j in 2:(nrow(df1)+1)){
+  for(i in 1:nrow(dfprob1)){
+ if(df1$start_time[j]<=i&&df1$end_time[j]>=i){
+    dfprob1[i, j]=1
+  }else
+    {dfprob1[i, j]=0
+}    
+  }
+})
+
+
+dfprob1<-dfprob1%>%as.data.frame()
+dfprob1$probs<-rowSums(dfprob1[,-1], na.rm=T)
+
+
+dfprob2<-matrix(nrow=1000, ncol=nrow(df2))
+dfprob2[, 1]=1:1000
+df2<-drop_na(df2)
+
+try(for (j in 2:(nrow(df2)+1)){
+  for(i in 1:nrow(dfprob2)){
+ if(df2$start_time[j]<=i&&df2$end_time[j]>=i){
+    dfprob2[i, j]=1
+  }else
+    {dfprob2[i, j]=0
+}    
+  }
+})
+
+
+dfprob2<-dfprob2%>%as.data.frame()
+dfprob2$probs<-rowSums(dfprob2[,-1], na.rm=T)
+
+dfprob3<-matrix(nrow=1000, ncol=nrow(df3))
+dfprob3[, 1]=1:1000
+df3<-drop_na(df3)
+
+try(for (j in 2:(nrow(df3)+1)){
+  for(i in 1:nrow(dfprob3)){
+ if(df3$start_time[j]<=i&&df3$end_time[j]>=i){
+    dfprob3[i, j]=1
+  }else
+    {dfprob3[i, j]=0
+}    
+  }
+})
+
+
+dfprob3<-dfprob3%>%as.data.frame()
+dfprob3$probs<-rowSums(dfprob3[,-1], na.rm=T)
+```
+
+```{r}
+options(scipen = 999)
+dfprob$trial_duration2<-(dfprob$V1 - min(dfprob$V1, na.rm = T)) / (max(dfprob$V1, na.rm = T)- min(dfprob$V1, na.rm = T))-1
+dfprob$percent<-dfprob$probs/sum(dfprob$probs)*100
+
+ggplot(dfprob, aes(x=trial_duration2, y=percent))+geom_line(color="red", size=0.9)+scale_y_sqrt()+theme_ggstatsplot()+xlab("Time in msec")+ylab("Probability in %")+labs(title = "Probability distribution of saccades occuring overtime")
+```
+
+
+```{r}
+dfprob1$trial_duration2<-(dfprob1$V1 - min(dfprob1$V1, na.rm = T)) / (max(dfprob1$V1, na.rm = T)- min(dfprob1$V1, na.rm = T))-1
+dfprob1$percent<-dfprob1$probs/sum(dfprob1$probs)*100
+
+dfprob2$trial_duration2<-(dfprob2$V1 - min(dfprob2$V1, na.rm = T)) / (max(dfprob2$V1, na.rm = T)- min(dfprob2$V1, na.rm = T))-1
+dfprob2$percent<-dfprob2$probs/sum(dfprob2$probs)*100
+
+dfprob3$trial_duration2<-(dfprob3$V1 - min(dfprob3$V1, na.rm = T)) / (max(dfprob3$V1, na.rm = T)- min(dfprob3$V1, na.rm = T))-1
+dfprob3$percent<-dfprob3$probs/sum(dfprob3$probs)*100
+
+
+ggplot(dfprob1, aes(x=trial_duration2, y=percent))+geom_line(color="red", size=0.9)+scale_y_sqrt()+geom_line(color="blue", size=0.9, data = dfprob2, aes(x=trial_duration2, y=percent))+geom_line(color="green", size=0.9, data = dfprob3, aes(x=trial_duration2, y=percent))+theme_ggstatsplot()+xlab("Time in msec")+ylab("Probability in %")+labs(title = "Probability distribution of saccades occuring overtime across conditions")#+legen
+
+#sqrt transfomtion
+ggplot(dfprob1, aes(x=trial_duration2, y=percent))+geom_line(color="red", size=0.9)+geom_line(color="blue", size=0.9, data = dfprob2, aes(x=trial_duration2, y=percent))+geom_line(color="green", size=0.9, data = dfprob3, aes(x=trial_duration2, y=percent))+theme_ggstatsplot()+xlab("Time in msec")+ylab("Probability in %")+labs(title = "Probability distribution of saccades occuring overtime across conditions")#+legen
+```
+
+
+
+
+
+**4**
+```{r, fig.width=9, fig.height=9}
+df40<-df%>%group_by(RECORDING_SESSION_LABEL, sacc_ID)%>%summarise(err=std.error(saccadic_gain, na.rm = T), saccadic_gain=mean(saccadic_gain, na.rm=T))%>%drop_na()
+ggplot(df40, aes(y=saccadic_gain, x=sacc_ID))+geom_col(aes(fill=factor(sacc_ID)))+geom_errorbar(aes(ymin=saccadic_gain-err, ymax=saccadic_gain+err))+facet_wrap(~RECORDING_SESSION_LABEL)+theme_ggstatsplot()+scale_color_brewer(aesthetics = "fill", palette = "Dark2")+xlab("Saccade number (Sacc_id)")+ylab("Saccadic gain")+guides(fill=guide_legend(title="Saccade ID"))+labs(title = "Saccadic gain across conditions", subtitle = "Whiskers - SEM")
+
+
+#with sd
+df40<-df%>%group_by(RECORDING_SESSION_LABEL, sacc_ID)%>%summarise(err=sd(saccadic_gain, na.rm = T), saccadic_gain=mean(saccadic_gain, na.rm=T))%>%drop_na()
+ggplot(df40, aes(y=saccadic_gain, x=sacc_ID))+geom_col(aes(fill=factor(sacc_ID)))+geom_errorbar(aes(ymin=saccadic_gain-err, ymax=saccadic_gain+err))+facet_wrap(~RECORDING_SESSION_LABEL)+theme_ggstatsplot()+scale_color_brewer(aesthetics = "fill", palette = "Dark2")+xlab("Saccade number (Sacc_id)")+ylab("Saccadic gain")+guides(fill=guide_legend(title="Saccade ID"))+labs(title = "Saccadic gain across conditions", subtitle = "Whiskers - SEM")
+```
+
+
+```{r}
+df4<-df%>%group_by(sacc_ID, TRIAL_LABEL, TARGET_SPEED)%>%summarise(err=std.error(saccadic_gain, na.rm = T), saccadic_gain=mean(saccadic_gain))%>%drop_na()
+ggplot(df4, aes(y=saccadic_gain, x=sacc_ID))+geom_col(aes(fill=factor(sacc_ID)))+geom_errorbar(aes(ymin=saccadic_gain-err, ymax=saccadic_gain+err))+facet_wrap(~TRIAL_LABEL~TARGET_SPEED)+theme_ggstatsplot()+scale_color_brewer(aesthetics = "fill", palette = "Dark2")+xlab("Saccade number(Sacc_id)")+ylab("Saccadic gain")+guides(fill=guide_legend(title="Saccade ID"))
+```
+
+**How to report**
+https://www.researchgate.net/post/How_to_report_the_results_of_Kruskal-Wallis_test
+Kruslal should be cited like -"No significant differences (Chi square = 3.71, p = .39, df = 6)", in this our case for part 5 wiil be - 
+Our kruskal test shows us significant difference between our groups(Chi square = 94.057, p-value < 2.2e-16, df = 2)
+
+For Dunn test you can refer to this https://www.researchgate.net/post/How-to-report-a-post-hock-Dunn-test
+And how it should look - Our post-hoc pairwise Dun test shows significant difference between CTRL/AE(p.adj.=0.0000), and no difference for GMI/AE(p.adj.=0.2136)
+
+**5**
+Because distribution isnt normal we use non-parametric kruskall test with post-hoc dunn test with holm adjustment for pairwise comparison.
+```{r}
+
+
+df5<-df%>%filter(sacc_ID==1)%>%drop_na()
+df5%>%group_by(TRIAL_LABEL)%>%summarise(mean(start_time), sd(start_time))
+shapiro.test(df5$start_time)
+kruskal.test(df5$start_time~df5$TRIAL_LABEL)
+dunn.test(df5$start_time, factor(df5$TRIAL_LABEL), method = "holm")
+```
+**6**
+Same situation for saccadic gain
+
+```{r}
+shapiro.test(df$saccadic_gain)
+kruskal.test(df$saccadic_gain~factor(df$sacc_ID))
+dunn.test(df$saccadic_gain, factor(df$sacc_ID), method = "holm")
+df%>%group_by(sacc_ID)%>%summarise(mean(saccadic_gain), sd(saccadic_gain))
+```
+
+
+```{r}
+df6_1<-df%>%filter(sacc_ID>1)
+
+shapiro.test(df6_1$saccadic_gain)
+kruskal.test(df6_1$saccadic_gain~factor(df6_1$sacc_ID))
+dunn.test(df6_1$saccadic_gain, factor(df6_1$sacc_ID), method = "holm")
+df6_1%>%group_by(sacc_ID)%>%summarise(mean(saccadic_gain), sd(saccadic_gain))
+```
+
+**7**
+Same for part 7
+```{r}
+dftest7<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL)%>%summarise(sum(sacc_ID))
+shapiro.test(dftest7$`sum(sacc_ID)`)
+dftest7%>%group_by(TRIAL_INDEX, TRIAL_LABEL)%>%summarise(mean(`sum(sacc_ID)`))
+
+kruskal.test(dftest7$`sum(sacc_ID)`~dftest7$TRIAL_LABEL)
+dunn.test(dftest7$`sum(sacc_ID)`, dftest7$TRIAL_LABEL, method = "holm")
+
+```
+
+**8**
+Here also distribution isnt normal so we use non-parametric statitics
+```{r}
+dftest8_1<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL, sacc_ID)%>%summarise(sum(sacc_ID))%>%filter(sacc_ID==1)
+
+kruskal.test(dftest8_1$`sum(sacc_ID)`~dftest8_1$TRIAL_LABEL)
+dunn.test(dftest8_1$`sum(sacc_ID)`,dftest8_1$TRIAL_LABEL, method = "holm")
+dftest8_1%>%group_by(TRIAL_LABEL)%>%summarise(mean(`sum(sacc_ID)`))
+
+dftest8_2<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL, sacc_ID)%>%summarise(sum(sacc_ID))%>%filter(sacc_ID==2)
+
+kruskal.test(dftest8_2$`sum(sacc_ID)`~dftest8_2$TRIAL_LABEL)
+dunn.test(dftest8_2$`sum(sacc_ID)`, dftest8_2$TRIAL_LABEL, method = "holm")
+dftest8_2%>%group_by(TRIAL_LABEL)%>%summarise(mean(`sum(sacc_ID)`))
+
+dftest8_3<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL, sacc_ID)%>%summarise(sum(sacc_ID))%>%filter(sacc_ID==3)
+
+kruskal.test(dftest8_3$`sum(sacc_ID)`~dftest8_3$TRIAL_LABEL)
+dunn.test(dftest8_3$`sum(sacc_ID)`, dftest8_3$TRIAL_LABEL, method = "holm")
+dftest8_3%>%group_by(TRIAL_LABEL)%>%summarise(mean(`sum(sacc_ID)`))
+
+dftest8_4<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL, sacc_ID)%>%summarise(sum(sacc_ID))%>%filter(sacc_ID==4)
+
+kruskal.test(dftest8_4$`sum(sacc_ID)`~dftest8_4$TRIAL_LABEL)
+dunn.test(dftest8_4$`sum(sacc_ID)`, dftest8_4$TRIAL_LABEL, method = "holm")
+dftest8_4%>%group_by(TRIAL_LABEL)%>%summarise(mean(`sum(sacc_ID)`))
+
+dftest8_5<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL, sacc_ID)%>%summarise(sum(sacc_ID))%>%filter(sacc_ID==5)
+
+kruskal.test(dftest8_5$`sum(sacc_ID)`~dftest8_5$TRIAL_LABEL)
+dunn.test(dftest8_5$`sum(sacc_ID)`, dftest8_5$TRIAL_LABEL, method = "holm")
+dftest8_5%>%group_by(TRIAL_LABEL)%>%summarise(mean(`sum(sacc_ID)`))
+#for 6 we have to little observations, test wont make any sense
+#dftest8_6<-df%>%group_by(TRIAL_INDEX, TRIAL_LABEL, sacc_ID)%>%summarise(sum(sacc_ID))%>%filter(sacc_ID==6)
+
+#kruskal.test(dftest8_6$`sum(sacc_ID)`~dftest8_6$TRIAL_LABEL)
+#dunn.test(dftest8_6$`sum(sacc_ID)`, dftest8_6$TRIAL_LABEL, method = "holm")
+```
+
+**9**
+and here
+```{r}
+
+shapiro.test(df5$trial_duration)
+
+kruskal.test(df5$trial_duration~df5$TRIAL_LABEL)
+dunn.test(df5$trial_duration, df5$TRIAL_LABEL, method = "holm")
+
+df5%>%group_by(TRIAL_LABEL)%>%summarise(mean(trial_duration), sd(trial_duration))
+```
+**10**
+```{r}
+aovtest10<-aov(dfprob1$probs~dfprob2$probs)#dfprob1 CTRL dfprob2 AE dfprob3 GMI
+summary(aovtest10)
+
+aovtest10_1<-aov(dfprob1$probs~dfprob3$probs)
+summary(aovtest10_1)
+
+aovtest10_2<-aov(dfprob2$probs~dfprob3$probs)
+summary(aovtest10_2)
+
+```
+
+
+
+**3**
+Averaged
+```{r}
+df$start_time_norm<-(df$start_time - min(df$trial_duration, na.rm = T)) / (max(df$trial_duration, na.rm = T)- min(df$trial_duration, na.rm = T))
+df$end_time_norm<-(df$end_time - min(df$trial_duration, na.rm = T)) / (max(df$trial_duration, na.rm = T)- min(df$trial_duration, na.rm = T))
+df$trial_duration_norm<-(df$trial_duration - min(df$trial_duration, na.rm = T)) / (max(df$trial_duration, na.rm = T)- min(df$trial_duration, na.rm = T))-1
+dr<-df%>%group_by(TRIAL_LABEL, sacc_ID)%>%summarise(start=mean(start_time)*2.054, end=mean(end_time)*2.054)
+dr
+df%>%group_by(TRIAL_LABEL, sacc_ID)%>%summarise(perc=n()/13.64)
+
+```
+
+
+```{r}
+#first second third saccade +normalization
+dffroplot<-data.frame(x=seq(-0.999, 0, 0.001), GMI=rep(1, 1000), AE=rep(1, 1000), CTRL=rep(1, 1000))
+dfforplot2<-pivot_longer(dffroplot, cols=2:4)
+
+
+dfforplotfiltered<-dfforplot2[536:687, ]
+dfforplotfiltered1<-dfforplot2[1146:1249, ]
+dfforplotfiltered11<-dfforplot2[1550:1755, ]
+dfforplotfiltered111<-dfforplot2[2347:2444, ]
+dfforplotfiltered1111<-dfforplot2[2896:2972, ]
+dfforplotfiltered11111<-dfforplot2[2905:2978, ]
+
+dfforplotfiltered2<-dfforplot2[589:814, ]
+dfforplotfiltered22<-dfforplot2[1181:1329, ]
+dfforplotfiltered222<-dfforplot2[1752:2086, ]
+dfforplotfiltered2222<-dfforplot2[2446:2826, ]
+dfforplotfiltered22222<-dfforplot2[2984:3006, ]
+
+
+
+
+dfforplotfiltered3<-dfforplot2[484:703, ]
+dfforplotfiltered33<-dfforplot2[1274:1524, ]
+dfforplotfiltered333<-dfforplot2[2303:2556, ]
+dfforplotfiltered3333<-dfforplot2[2720:2861, ]
+dfforplotfiltered33333<-dfforplot2[2948:3017, ]
+
+ggplot(dfforplot2, aes(x=x, y=value, fill=name, alpha=value/10))+theme_ggstatsplot()+geom_area( color="black", alpha=0.05)+geom_ribbon(data=dfforplotfiltered2, aes(ymin=0, ymax=0.99), alpha=0.8)+geom_ribbon(data=dfforplotfiltered, aes(ymin=1.99, ymax=1.01), alpha=0.83, fill="green")+geom_ribbon(data=dfforplotfiltered3, aes(ymin=2.99, ymax=2.01), alpha=0.839, fill="red")+theme_ggstatsplot()+labs(title="Averaged subjects saccades during timeline across conditions")+xlab("Time in msec")+ylab("Conditions")+geom_ribbon(data=dfforplotfiltered33, aes(ymin=2.99, ymax=2.01), alpha=0.47, fill="red")+geom_ribbon(data=dfforplotfiltered333, aes(ymin=2.99, ymax=2.01), alpha=0.15, fill="red")+geom_ribbon(data=dfforplotfiltered3333, aes(ymin=2.99, ymax=2.01), alpha=0.05, fill="red")+geom_ribbon(data=dfforplotfiltered33333, aes(ymin=2.99, ymax=2.01), alpha=0.01, fill="red")+geom_ribbon(data=dfforplotfiltered1, aes(ymin=1.99, ymax=1.01), alpha=0.51, fill="green")+geom_ribbon(data=dfforplotfiltered11, aes(ymin=1.99, ymax=1.01), alpha=0.3, fill="green")+geom_ribbon(data=dfforplotfiltered111, aes(ymin=1.99, ymax=1.01), alpha=0.16, fill="green")+geom_ribbon(data=dfforplotfiltered1111, aes(ymin=1.99, ymax=1.01), alpha=0.08, fill="green")+geom_ribbon(data=dfforplotfiltered11111, aes(ymin=1.99, ymax=1.01), alpha=0.007, fill="green")+geom_ribbon(data=dfforplotfiltered22, aes(ymin=0, ymax=0.99), alpha=0.48)+geom_ribbon(data=dfforplotfiltered222, aes(ymin=0, ymax=0.99), alpha=0.2)+geom_ribbon(data=dfforplotfiltered2222, aes(ymin=0, ymax=0.99), alpha=0.1)+geom_ribbon(data=dfforplotfiltered22222, aes(ymin=0, ymax=0.99, alpha=0.05))
+
+
+```
+Each subject
+```{r}
+#dr2<-df%>%group_by(RECORDING_SESSION_LABEL)%>%summarise(start=mean(start_time)*3, end=mean(end_time)*3)
+#dr2
+#dffroplot22<-data.frame(x=1:1000, "1"=rep(1, 1000), "2"=rep(1, 1000), "3"=rep(1, 1000) , "4"=rep(1, 1000), "5"=rep(1, 1000), "6"=rep(1, 1000), "7"=rep(1, 1000), "8"=rep(1, 1000), "9"=rep(1, 1000), "10"=rep(1, 1000), "11"=rep(1, 1000), "12"=rep(1, 1000), "13"=rep(1, 1000), "14"=rep(1, 1000), "15"=rep(1, 1000), "16"=rep(1, 1000), "17"=rep(1, 1000), "18"=rep(1, 1000), "19"=rep(1, 1000), "20"=rep(1, 1000), "21"=rep(1, 1000), "22"=rep(1, 1000), "23"=rep(1, 1000), "24"=rep(1, 1000))
+#dfforplot222<-pivot_longer(dffroplot22, cols=2:25)
+
+```
+```{r}
+#cstp<-c("#ccffac", "#ccfcb0", "#cbfab3", "#cbf7b7", "#caf5bb", "#c9f2be", "#c9f0c2", "#c8edc6", "#c7eac9", "#c6e8cd", "#c5e5d0", "#c4e3d4", "#c3e0d7", "#c2deda", "#c1dbde", "#c0d9e1", "#bed6e5", "#bdd4e8", "#bcd1eb", "#bacfef", "#b8ccf2", "#b7caf5", "#b5c7f8", "#b3c5fc", "#b1c2ff")
+```
+
+
+```{r}
+#dfforplotfiltered<-dfforplot2[714:921, ]
+#dfforplotfiltered2<-dfforplot2[1062:1257, ]
+#dfforplotfiltered3<-dfforplot2[885:1071, ]
+#dfforplotfiltered4<-dfforplot2[1323:1507, ]
+#dfforplotfiltered5<-dfforplot2[920:1096, ]
+#dfforplotfiltered6<-dfforplot2[979:1170, ]
+#dfforplotfiltered7<-dfforplot2[824:1047, ]
+#dfforplotfiltered8<-dfforplot2[1574:1760, ]
+#dfforplotfiltered9<-dfforplot2[1339:1514, ]
+#dfforplotfiltered10<-dfforplot2[998:1191, ]
+#dfforplotfiltered11<-dfforplot2[1131:1369, ]
+#dfforplotfiltered12<-dfforplot2[1957:2153, ]
+#dfforplotfiltered13<-dfforplot2[871:1068, ]
+#dfforplotfiltered14<-dfforplot2[1303:1494, ]
+#dfforplotfiltered15<-dfforplot2[1072:1253, ]
+#dfforplotfiltered16<-dfforplot2[1644:1836, ]
+#dfforplotfiltered17<-dfforplot2[1516:1711, ]
+#dfforplotfiltered18<-dfforplot2[879:1084, ]
+#dfforplotfiltered19<-dfforplot2[1685:1867, ]
+#dfforplotfiltered20<-dfforplot2[1520:1718, ]
+#dfforplotfiltered21<-dfforplot2[769:955, ]
+#dfforplotfiltered22<-dfforplot2[880:1083, ]
+#dfforplotfiltered23<-dfforplot2[712:924, ]
+#dfforplotfiltered24<-dfforplot2[796:999, ]
+
+#ggplot(dfforplot222, aes(x=x, y=value, fill=name))+geom_area( color="black", alpha=0.4)+geom_ribbon(data=dfforplotfiltered2, aes(ymin=0, ymax=0.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered, aes(ymin=1.99, ymax=1.01), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered3, aes(ymin=2.99, ymax=2.01), alpha=0.6, fill="violet")+theme_ggstatsplot()+labs(title="Averaged subjects saccades during timeline across conditions")+xlab("Time in msec")+ylab("Subjects")+geom_ribbon(data=dfforplotfiltered4, aes(ymin=3.01, ymax=3.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered5, aes(ymin=4.01, ymax=4.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered6, aes(ymin=5.01, ymax=5.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered7, aes(ymin=6.01, ymax=6.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered8, aes(ymin=7.01, ymax=7.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered9, aes(ymin=8.01, ymax=8.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered10, aes(ymin=9.01, ymax=9.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered4, aes(ymin=3.01, ymax=3.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered11, aes(ymin=10.01, ymax=10.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered12, aes(ymin=11.01, ymax=11.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered13, aes(ymin=12.01, ymax=12.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered14, aes(ymin=13.01, ymax=13.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered15, aes(ymin=14.01, ymax=14.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered16, aes(ymin=15.01, ymax=15.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered17, aes(ymin=16.01, ymax=16.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered18, aes(ymin=17.01, ymax=17.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered19, aes(ymin=18.01, ymax=18.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered20, aes(ymin=19.01, ymax=19.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered21, aes(ymin=20.01, ymax=20.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered22, aes(ymin=21.01, ymax=21.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered23, aes(ymin=22.01, ymax=22.99), alpha=0.6, fill="violet")+geom_ribbon(data=dfforplotfiltered24, aes(ymin=23.01, ymax=23.99), alpha=0.6, fill="violet")+guides(fill=guide_legend(title="Subject ID"))+scale_colour_manual(values = cstp)+scale_fill_manual(values = cstp)
+
+
+```
+
+
+
+**2**
+Subject 1
+```{r, fig.width=4, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==1)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -(889:890)]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+Subject 2
+```{r, fig.width=5, fig.height=5}
+
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==2)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -(1387:1388)]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+Subject 3
+```{r, fig.width=5, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==3)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+
+Subject 4
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==4)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 5
+```{r, fig.width=4, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==5)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+Subject 6
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==6)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+Subject 7
+```{r, fig.width=4, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==7)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 8
+```{r, fig.width=4, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==8)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 9
+```{r, fig.width=5, fig.height=5}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==9)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 10
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==10)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+
+Subject 11
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==11)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 12
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==12)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 13
+```{r, fig.width=4, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==13)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 14
+```{r, fig.width=4, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==14)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+
+Subject 15
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==15)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 16
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==16)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 17
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==17)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 18
+```{r, fig.width=5, fig.height=5}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==18)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+Subject 19
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==19)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+Subject 20
+```{r, fig.width=9, fig.height=9}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==20)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+Subject 21
+```{r, fig.width=, fig.height=4}
+dfpart12<-df%>%filter(RECORDING_SESSION_LABEL==21)
+dfpart11<-matrix(nrow=max(dfpart12$trial_duration), ncol=nrow(dfpart12))
+
+
+try(for (j in 1:nrow(dfpart12)){
+  for(i in 1:nrow(dfpart11)){2
+ if(dfpart12$start_time[j]<i&&dfpart12$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart12$TRIAL_INDEX
+dfpart11$label<-dfpart12$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+Subject 22
+```{r, fig.width=5, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==22)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+Subject 23
+```{r, fig.width=5, fig.height=4}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==23)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+```
+
+Subject 24
+```{r, fig.width=4, fig.height=5}
+dfpart1<-df%>%filter(RECORDING_SESSION_LABEL==24)
+dfpart11<-matrix(nrow=max(dfpart1$trial_duration), ncol=nrow(dfpart1))
+
+
+try(for (j in 1:nrow(dfpart1)){
+  for(i in 1:nrow(dfpart11)){
+ if(dfpart1$start_time[j]<i&&dfpart1$end_time[j]>i){
+    dfpart11[i, j]=1
+  }else
+    {dfpart11[i, j]=0
+}    
+  }
+})
+
+
+dfpart11<-dfpart11%>%t()%>%as.data.frame()
+dfpart11$index<-dfpart1$TRIAL_INDEX
+dfpart11$label<-dfpart1$TRIAL_LABEL
+fd<-dfpart11%>%group_by(index)%>%summarise_at(.vars=colnames(dfpart11[, -((ncol(dfpart11)-1):ncol(dfpart11))]), .funs=sum)
+formerg<-dfpart11%>%select(index, label)
+fd<-left_join(fd, formerg, by="index")
+fdan<-fd%>%select(label, index)%>%unique()%>%select(label)
+fd$label<-NULL
+fd<-unique(fd)
+fd$index<-NULL
+row.names(fdan)<-row.names(fd)
+
+fdan<-as.data.frame(fdan)
+fdan$label<-as.ordered(fdan$label)
+
+row.names(fd)<-row.names(fdan)
+pheatmap::pheatmap(fd, cluster_rows = F, cluster_cols = F, show_colnames = T, show_rownames = T, fontsize_col = 5, fontsize_row = 4,  border_color="black",labels_col=c("-1", "-0.95", "-0.9", "-0.85", "-0.8", "-0.75","-0.7","-0.65", "-0.6", "-0.55", "-0.5","-0.45",  "-0.4","-0.35","-0.3","-0.25","-0.2","-0.15","-0.1","-0.05","0"), annotation_row = fdan, gaps_row=c(1:nrow(fd)-1), legend = F)
+
+```
+
+
+
+
+
+
+

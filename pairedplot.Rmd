@@ -1,0 +1,194 @@
+---
+title: "Paired plots"
+author: "O.M."
+date: '2022-08-04'
+output: html_document
+---
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(readxl)
+library(ggstatsplot)
+library(scales)
+```
+
+
+
+```{r, warning=F}
+set.seed(2022)
+Newfas<-read_excel("FAS_30min_4Aug22.xlsx", 
+    col_types = c("text", "date", "date", 
+        "skip", "skip", "date", "date", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text"))
+FAS<- read_excel("FAS and Avg pain Appended.xlsx", 
+    sheet = "PainRedDev")
+```
+
+```{r}
+Newfas<-left_join(Newfas, select(FAS, `Unique Subject ID`, Grp, `SAS Responder`), by="Unique Subject ID")
+Newfas$Grp<-factor(Newfas$Grp)
+Newfas$initialPS<-as.numeric(Newfas$initialPS)
+Newfas$pain30<-as.numeric(Newfas$pain30)
+Newfas$pctchg<-as.numeric(Newfas$pctchg)
+Newfas$responderstat<-factor(Newfas$responderstat)
+Newfas$m3_m6<-factor(Newfas$m3_m6)
+Newfas$m1_m3<-factor(Newfas$m1_m3)
+Newfas$m3_m12<-factor(Newfas$m3_m12)
+Newfas$trttime<-factor(Newfas$trttime)
+```
+
+```{r}
+fd<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4)%>%group_by(`Unique Subject ID`)%>%summarise(n())%>%select(`Unique Subject ID`)
+`%!in%` <- Negate(`%in%`)
+Newfas%>% filter(`Unique Subject ID` %!in% fd$`Unique Subject ID`)%>%select(`Unique Subject ID`)%>%group_by(`Unique Subject ID`)%>%summarise(n())
+
+
+
+Newfas%>%filter(`Unique Subject ID`=="01-057")
+```
+
+
+```{r}
+newfasmean<-Newfas%>%group_by(`Unique Subject ID`)%>%summarise(Meanscorein=mean(initialPS, na.rm=T), Meanscore30=mean(pain30, na.rm=T), Grp=Grp)
+ggpaired(newfasmean, cond1="Meanscorein", cond2="Meanscore30", ylab="NRS pain level", xlab="Conditions", fill="condition")
+
+
+```
+
+```{r, fig.width=13, fig.height=6}
+Newfas$ID<-Newfas$`Unique Subject ID`
+Newfas$ipgnewdate<-as.character(Newfas$ipgnewdate)
+#Newfas$initialPS<-jitter(Newfas$initialPS, amount=0.21)
+#Newfas$pain30<-jitter(Newfas$pain30, amount=0.21)
+
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&ID=="06-003"&initialPS>=4)%>%ggpaired(cond1="initialPS", cond2="pain30", ylab="NRS pain level", xlab="06_003", color="condition", repel=T, line.color = "gray", line.size = 0.4, palette = "npg", facet.by = "ID", position=jitter)
+
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4)%>%head(1000)%>%ggpaired(cond1="initialPS", cond2="pain30", ylab="NRS pain level", xlab="Patient ID", color="condition", repel=T, line.color = "gray", line.size = 0.4, palette = "npg", facet.by = "ID")
+```
+Individual plots
+
+```{r}
+Newfas$pain30<-rescale(Newfas$pain30, to = c(0, 10), na.rm=T)
+Newfas$initialPS<-rescale(Newfas$initialPS, to = c(0, 10), na.rm=T)
+```
+
+
+```{r}
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&!is.na(Grp))%>%select(initialPS, pain30, ID, Grp, `SAS Responder`)%>%mutate(specid=1:n())%>%
+mutate(colorline=factor(ifelse((initialPS-pain30)/initialPS>=0.5,"green", ifelse((initialPS-pain30)/initialPS>=0.20&(initialPS-pain30)/initialPS<0.5, "blue","grey")), level=c("green", "grey", "blue")), val=(initialPS-pain30)/initialPS)%>%arrange(desc(val))%>% # adds 20/50 RR
+pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))
+```
+
+```{r}
+rhg_cols<-c("#2eff1b","#288a8d",  "#0e0e0e")
+dataf<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&ID=="01-065")%>%select(initialPS, pain30, ID, Grp, `SAS Responder`)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))
+
+  ggplot(dataf, aes(y=value)) +
+  geom_boxplot(aes(x=name, color=colorboxplot)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.6)+scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e", "green"="green", "red"="red")) +
+  xlab("Condition") + ylab("NRS pain level") +labs(title="Paired for 01_057 patient in control group", subtitle = str_c("Amount of sessions=", as.character(max(dataf$specid))))+
+  scale_y_continuous(limits = c(0, 10), breaks = 0:10)+
+  theme_ggstatsplot()+theme(legend.position="none")
+```
+For all test/control
+```{r}
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&!is.na(Grp))%>%select(initialPS, pain30, ID, Grp)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%ggplot(aes(y=value)) +
+  geom_boxplot(aes(x=name)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.6) +scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e")) +
+  xlab("Condition") + ylab("NRS pain level") +labs(title="Paired for all patients between test/control groups")+
+  scale_y_continuous(breaks = 0:10)+facet_wrap(~Grp)+theme_ggstatsplot()+theme(legend.position="none")
+```
+
+
+
+Iteration for individuals
+```{r}
+
+f<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4)%>%select(ID)%>%unique()
+patientscode<-f$ID
+ for (i in 1:length(patientscode)){
+p<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4& ID %in% patientscode[i])%>%select(initialPS, pain30, ID, Grp, `SAS Responder`)%>%mutate(specid=2:(n()+1))%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))
+b<-ggplot(p, aes(y=value)) +
+  geom_boxplot(aes(x=name, color=colorboxplot)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.55) +scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e", "green"="green", "red"="red"))+
+  xlab(paste(patientscode[i])) + ylab("NRS pain level") +labs(title="Paired for 8 first patients in control group", subtitle = str_c("Amount of sessions=", as.character(max(p$specid))))+
+  scale_y_continuous(breaks = 0:10)+
+  theme_ggstatsplot()+theme(legend.position="none")
+print(b)}
+
+gc()
+```
+
+
+
+```{r}
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&ID=="01-015")%>%select(initialPS, pain30, ID, `SAS Responder`)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))
+```
+
+
+```{r}
+#getting id of 20 patients
+vecid<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4)%>%group_by(ID)%>%summarise(am=n())%>%head(20)%>%select(ID)
+
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&ID %in% vecid$ID)%>%select(initialPS, pain30, ID, `SAS Responder`)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))%>%ggplot(aes(y=value)) +
+  geom_boxplot(aes(x=name, color=colorboxplot)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.6) +
+  xlab("Conditions") + ylab("Nrs Pain level") +labs(title="Paired for 8 first patients with green color for more then 50% reduction")+
+  scale_y_continuous(breaks = 0:10)+facet_wrap(~ID, nrow = 4, ncol = 5)+
+  theme_ggstatsplot()+scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e", "green"="green", "red"="red"))+theme(legend.position="none")
+```
+
+
+```{r}
+
+Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4)%>%slice(300:500)%>%select(initialPS, pain30, ID, `SAS Responder`)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))%>%ggplot(aes(y=value)) +
+  geom_boxplot(aes(x=name, color=colorboxplot)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.3) +
+  xlab("Conditions") + ylab("Nrs Pain level") +labs(title="Paired for 8 first patients with green color for more then 50% reduction")+
+  scale_y_continuous(breaks = 0:10)+facet_wrap(~ID, nrow = 2, ncol = 4)+
+  theme_ggstatsplot()+scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e", "green"="green", "red"="red"))+theme(legend.position="none")
+```
+
+Iteration for facets with control
+```{r}
+
+gf<-list(1:407, 408:1108, 1109:1603, 1604:2037, 2038:2678, 2679:3035, 3036:3492, 3493:3750, 3751:4076, 4077:4430, 4431:4783)
+for(i in 1:11){
+p<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&Grp=="Control")%>%slice(gf[[i]])%>%select(initialPS, pain30, ID, `SAS Responder`)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))%>% ggplot(aes(y=value)) +
+  geom_boxplot(aes(x=name, color=colorboxplot)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.55) +scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e", "green"="green", "red"="red"))+
+  xlab("Condition") + ylab("NRS pain level") +labs(title="Paired plots for patients in control group")+
+  scale_y_continuous(breaks = 0:10)+facet_wrap(~ID, nrow = 3, ncol = 5)+
+  theme_ggstatsplot()+theme(legend.position="none")
+print(p)
+}
+```
+Iteration for facets with test
+```{r}
+gf<-list(1:316, 317:557, 558:1060, 1061:1221,1222:1423, 1424:1570, 1571:1955, 1956:2143, 2144:2368, 2369:2761, 2762:2779)
+for(i in 1:11){
+p<-Newfas%>%filter(Newfas$trttime=="Use"&Newfas$m1_m3=="Y"&!is.na(Newfas$initialPS)&!is.na(Newfas$pain30)&initialPS>=4&Grp=="Test")%>%slice(gf[[i]])%>%select(initialPS, pain30, ID, `SAS Responder`)%>%mutate(specid=1:n())%>%mutate(colorline=factor(ifelse(pain30/initialPS<=0.5,"green", ifelse(pain30/initialPS>=0.5&pain30/initialPS<=0.8,"blue", "grey")), level=c("green", "blue", "grey")))%>%pivot_longer(1:2)%>%mutate(colorboxplot=ifelse(name=="initialPS", "red", ifelse(`SAS Responder`=="Y", "green", "red")))%>% ggplot(aes(y=value)) +
+  geom_boxplot(aes(x=name, color=colorboxplot)) +
+  geom_point(aes(x=name)) +
+  geom_line(aes(x=name, group=specid, color=colorline), alpha=0.55) +scale_colour_manual(values = c("green"="#2eff1b", "blue"="#288a8d", "grey"="#0e0e0e", "green"="green", "red"="red"))+
+  xlab("Condition") + ylab("NRS pain level") +labs(title="Paired plots for patients in control group")+
+  scale_y_continuous(breaks = 0:10)+facet_wrap(~ID, nrow = 3, ncol = 5)+
+  theme_ggstatsplot()+theme(legend.position="none")
+print(p)
+}
+```
+
+```{r}
+#p$ind<-1:nrow(p)
+
+
+#p%>%group_by(ID)%>%summarise(id=range(ind))
+```
+
