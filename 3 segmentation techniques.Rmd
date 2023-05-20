@@ -1,0 +1,81 @@
+---
+title: "Updated function for segmentation"
+author: "O.M."
+date: '2022-08-11'
+output: html_document
+---
+
+```{r, warning=FALSE, message=FALSE}
+library(readxl)
+library(tidyverse)
+library(dpseg)
+```
+
+```{r}
+my_data<-read_excel("Ln I vs V data set samples for Oleh.xlsx", 
+   sheet = "Data set 1", col_types = c("numeric", 
+        "numeric"), skip = 4)
+d<-my_data%>%tidyr::drop_na()
+```
+
+
+
+This function will return shorter segments, but with higher fit. 
+```{r}
+seg_Auto_with_approximation<-function(d){
+set.seed(2022)#setting seed, it can be any number, just the same each time
+inx<-quantile(d$Clg_R01_LnI, 0.905)
+d<-d%>%filter(Clg_R01_LnI<inx)
+segs <- dpseg(x = d$Voltage, y = d$Clg_R01_LnI, minl = 7,maxl = 10, jumps=1, S0=6, P=0.2)#runing segmentation, with smallest segments in 5 points, specifying x and y variable i.e target and response 
+
+#getting the best segment based on amount of explained variation
+segs1<-segs$segments#segs variable contain a lot of information but we are looking only on segments dataframe
+segs2<-as.data.frame(segs1)#converting in to a data frame format
+segs2$slope<-ifelse(segs2$slope<0, NA, segs2$slope)
+
+segs3<-arrange(segs2, desc(r2))%>%tidyr::drop_na()#arranging our segments by their explained variation amount from biggest to lowest value.
+segs4<-head(segs3, 1)#getting only the best segment - which explained the most variation. 
+
+d1<-d[segs4$start:segs4$end, ]#filtering which data points would be returned for the most linear region, by selecting only those points which lies in start-end range of our segment 
+
+print(summary(lm(Clg_R01_LnI~Voltage, data=d1)))#looking on results of this model, just to see Rsquared and regression coefficients
+plot(d)
+abline(lm(Clg_R01_LnI~Voltage, data=d1),col="red")
+
+gc()#just to clean memory after, in order not to store all unneccesary variables
+}
+```
+
+```{r}
+seg_Auto_with_approximation(d)
+
+```
+
+And this one should return longer, possibly more consistent and repetitive between different iterations, but with lower fit.
+```{r}
+seg_Auto_with_approximation2<-function(d){
+set.seed(2022)#setting seed, it can be any number, just the same each time
+inx<-quantile(d$Clg_R01_LnI, 0.905)
+d<-d%>%filter(Clg_R01_LnI<inx)
+segs <- dpseg(x = d$Voltage, y = d$Clg_R01_LnI, minl = 7,maxl = 10, jumps=1, S0=2, P=11)
+
+#getting the best segment based on amount of explained variation
+segs1<-segs$segments#segs variable contain a lot of information but we are looking only on segments dataframe
+segs2<-as.data.frame(segs1)#converting in to a data frame format
+segs2$slope<-ifelse(segs2$slope<0, NA, segs2$slope)
+segs3<-arrange(segs2, desc(r2))%>%tidyr::drop_na()#arranging our segments by their explained variation amount from biggest to lowest value.
+segs4<-head(segs3, 1)#getting only the best segment - which explained the most variation. 
+
+d1<-d[segs4$start:segs4$end, ]#filtering which data points would be returned for the most linear region, by selecting only those points which lies in start-end range of our segment 
+
+print(summary(lm(Clg_R01_LnI~Voltage, data=d1)))#looking on results of this model, just to see Rsquared and regression coefficients
+plot(d)
+abline(lm(Clg_R01_LnI~Voltage, data=d1),col="red")
+
+gc()#just to clean memory after, in order not to store all unneccesary variables
+}
+```
+
+```{r}
+seg_Auto_with_approximation2(d)
+```

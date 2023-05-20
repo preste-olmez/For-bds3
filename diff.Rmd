@@ -1,0 +1,193 @@
+---
+title: "diff"
+author: "O.M."
+date: '2022-11-01'
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+#addin libraries
+library(stringr)
+```
+
+```{r}
+df1<-read_excel("FAS_L16_2_6_2.xlsx", 
+    col_types = c("text", "text", "text", 
+        "text", "text", "text"))
+df2<-read_excel("55_export_EOD_19-10-2022.xlsx", 
+    col_types = c("text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", 
+        "text", "text", "text", 
+        "text", "text", "text", 
+        "text", "text", "text", 
+        "text", "text", "text", 
+        "text", "text", "text", 
+         "text", "text"))
+#loading data, we need to treat all columns as characters
+```
+
+```{r}
+df1<-df1%>%separate(`Worst Amputation Pain in Last 24-Hours / Least Amputation Pain in Last 24-Hours`, c("EODPWOR", "EODPLEA"))%>%separate(`Average Amputation Pain / Current Overall Pain`, c("EODPAVG", "EODPOVE"))#because in FAS dataset you have 2 values in one column, we need to split  them in 2 separate, with exact names we have in 55 dataset
+```
+
+
+```{r}
+nm<-str_split(df1$`Date and Time of End-of-Day Report`, "-")#now we need to treat our date-time variables, we also will split onto two columns date and time
+df1$EODDAT<-sapply(nm,"[[",1)
+df1$EODTIM<-sapply(nm,"[[",2)
+```
+
+
+```{r}
+gb<-str_split(df1$`Routine Medication Taken / Number of Pills Taken / Additional Routine Medication`, "/")
+df1$EODROT<-sapply(gb,"[[",1)
+#now we will elemen-wise split medication element, it will splitted after each / sign 
+```
+
+
+```{r}
+#now we just creating new variables from our splitted list
+for(i in 1:length(gb)){
+  df1[i, 12]<-gb[[i]][2]
+}
+df1<-df1%>%rename(EODPIT=...12)
+
+for(i in 1:length(gb)){
+  df1[i, 13]<-gb[[i]][3]
+}
+df1<-df1%>%rename(EODROT2=...13)
+
+for(i in 1:length(gb)){
+  df1[i, 14]<-gb[[i]][4]
+}
+df1<-df1%>%rename(EODPIT2=...14)
+
+for(i in 1:length(gb)){
+  df1[i, 15]<-gb[[i]][5]
+}
+df1<-df1%>%rename(EODROT3=...15)
+
+for(i in 1:length(gb)){
+  df1[i, 16]<-gb[[i]][6]
+}
+df1<-df1%>%rename(EODPIT3=...16)
+
+for(i in 1:length(gb)){
+  df1[i, 17]<-gb[[i]][7]
+}
+df1<-df1%>%rename(EODROT4=...17)
+
+for(i in 1:length(gb)){
+  df1[i, 18]<-gb[[i]][8]
+}
+df1<-df1%>%rename(EODPIT4=...18)
+
+for(i in 1:length(gb)){
+  df1[i, 19]<-gb[[i]][9]
+}
+df1<-df1%>%rename(EODROT5=...19)
+
+for(i in 1:length(gb)){
+  df1[i, 20]<-gb[[i]][10]
+}
+df1<-df1%>%rename(EODPIT5=...20)
+
+for(i in 1:length(gb)){
+  df1[i, 21]<-gb[[i]][11]
+}
+df1<-df1%>%rename(EODROT6=...21)
+
+for(i in 1:length(gb)){
+  df1[i, 22]<-gb[[i]][12]
+}
+df1<-df1%>%rename(EODPIT6=...22)
+
+
+for(i in 1:length(gb)){
+  df1[i, 23]<-gb[[i]][13]
+}
+df1<-df1%>%rename(EODROT7=...23)
+
+for(i in 1:length(gb)){
+  df1[i, 24]<-gb[[i]][14]
+}
+df1<-df1%>%rename(EODPIT7=...24)
+
+for(i in 1:length(gb)){
+  df1[i, 25]<-gb[[i]][15]
+}
+df1<-df1%>%rename(EODROT8=...25)
+
+for(i in 1:length(gb)){
+  df1[i, 26]<-gb[[i]][16]
+}
+df1<-df1%>%rename(EODPIT8=...26)
+
+for(i in 1:length(gb)){
+  df1[i, 27]<-gb[[i]][17]
+}
+df1<-df1%>%rename(EODROT9=...27)
+
+for(i in 1:length(gb)){
+  df1[i, 28]<-gb[[i]][18]
+}
+df1<-df1%>%rename(EODPIT9=...28)
+
+for(i in 1:length(gb)){
+  df1[i, 29]<-gb[[i]][19]
+}
+df1<-df1%>%rename(EODROT10=...29)
+
+for(i in 1:length(gb)){
+  df1[i, 30]<-gb[[i]][20]
+}
+df1<-df1%>%rename(EODPIT10=...30)
+
+df1<-df1%>%rename(EODPRO=`How Long was the Prosthesis used today?`)
+#we need to have same names across ours dataframes, so we would rename everyting accordingly to 55 dataset
+```
+
+```{r}
+df1<-df1%>%select(-`Date and Time of End-of-Day Report`, -`Routine Medication Taken / Number of Pills Taken / Additional Routine Medication`)%>%rename(SUBJNUM=`Subject ID`)#lastly we will drop original columns
+yt<-colnames(df1)
+```
+
+```{r}
+df2<-df2%>%select(yt)#we would remove all EODROA columns because raw presence of the data can substitute them
+```
+
+```{r}
+df<-as.data.frame(matrix(ncol=ncol(df2), nrow=nrow(df2)))#here we create an empty dataframe which will be filled with the results of the comparison
+
+for(i in 1:nrow(df2)){
+
+    df[i, ]<-as.data.frame(df2[1, ]==df1[1, ])#here we check if every element of our transformed dataframe fas is the same as every element of dataframe 55, and writing don results in a new df
+  }
+colnames(df)<-yt#adding names to this new df
+```
+
+
+```{r}
+#dffull<-df
+```
+
+
+```{r}
+
+not_all_na <- function(x) any(!is.na(x))#this function is used for removal of columns where we have at least some observations
+
+
+df<-df%>%mutate(across(everything(), as.character))#we need to convert our data into character string one more time
+df<-df%>%select_if(not_all_na)#now we will drop columns where everything is NA
+
+
+
+df%>%filter_at(1:11, any_vars(.==F))#and lastly here we will apply a filter where you can see every row  where it is at least one different observation
+#now it returns all of them, because the date in FAS df and the date in 55 df, are in different formats
+```
+

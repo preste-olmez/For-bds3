@@ -1,0 +1,260 @@
+---
+title: "Untitled"
+author: "O.M."
+date: "2023-03-28"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(tidyverse)
+```
+
+
+```{r}
+
+df <- read_excel("For R analysis Science communication.xlsx")
+
+```
+
+
+Adding south/north groupings
+```{r}
+df<-df%>%mutate(South=ifelse(`What country are you based in?`=="Aotearoa New Zealand"|`What country are you based in?`=="Argentina"|`What country are you based in?`=="Australia"|`What country are you based in?`=="Brasil"|`What country are you based in?`=="Chile"|`What country are you based in?`=="Colombia"|`What country are you based in?`=="Costa Rica"|`What country are you based in?`=="Egypt"|`What country are you based in?`=="India"|`What country are you based in?`=="Indonesia"|`What country are you based in?`=="Mexico"|`What country are you based in?`=="South Africa"|`What country are you based in?`=="Thailand"|`What country are you based in?`=="Uruguay", "Global South", "Global North")) 
+```
+
+
+Function for mode
+```{r}
+modeav <- function (x, method = "mode", na.rm = FALSE)
+{
+  x <- unlist(x)
+  if (na.rm)
+    x <- x[!is.na(x)]
+  u <- unique(x)
+  n <- length(u)
+  frequencies <- rep(0, n)
+  for (i in seq_len(n)) {
+    if (is.na(u[i])) {
+      frequencies[i] <- sum(is.na(x))
+    }
+    else {
+      frequencies[i] <- sum(x == u[i], na.rm = TRUE)
+    }
+  }
+  if (method == "mode" | is.na(method) | method == "")
+  {return(ifelse(length(frequencies[frequencies==max(frequencies)])>1,NA,u[which.max(frequencies)]))}
+  if(method == "nmode" | method == "nmodes")
+  {return(length(frequencies[frequencies==max(frequencies)]))}
+  if (method == "modes" | method == "modevalues")
+  {return(u[which(frequencies==max(frequencies), arr.ind = FALSE, useNames = FALSE)])}  
+  warning("Warning: method not recognised.  Valid methods are 'mode' [default], 'nmodes' and 'modes'")
+  return()
+}
+```
+
+
+```{r}
+levels(factor(df$`What country are you based in?`))
+df$`What country are you based in?`<-ifelse(df$`What country are you based in?`=="uk", "UK", ifelse(df$`What country are you based in?`=="United Kingdom", "UK", ifelse(df$`What country are you based in?`=="Belgium and Europe", "Belgium", ifelse(df$`What country are you based in?`=="uk", "UK", ifelse(df$`What country are you based in?`=="United Kingdom", "UK", ifelse(df$`What country are you based in?`=="SPAIN" , "Spain", ifelse(df$`What country are you based in?`=="Mexico" , "México", ifelse(df$`What country are you based in?`=="uSA"   , "USA"  , ifelse(df$`What country are you based in?`=="United States"   , "USA"  , ifelse(df$`What country are you based in?`=="US"  , "USA"  , df$`What country are you based in?`))))))))))
+```
+
+Additional plot Crosstab Q4-Q5 
+```{r, fig.width=12, fig.height=5}
+table(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`, df$`What country are you based in?`)
+
+ggplot(df, aes(`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`, ..count..))+geom_bar(aes(fill=`What country are you based in?`), position = "dodge")+theme(axis.text = element_text(size=6))+coord_flip()
+```
+
+
+Additional plot Crosstab South-Q5
+
+```{r, fig.width=12, fig.height=5}
+table(df$South, df$`What country are you based in?`)
+ggplot(df, aes(x=`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`))+geom_bar(aes(fill=South), position = "dodge")+theme(axis.text = element_text(size=6))+coord_flip()
+
+
+```
+
+
+Mode and tabulations for Q1.
+```{r, fig.width=9, fig.height=5}
+modeav(df$`What is your primary involvement in science communication? Tick only one box.`, na.rm = T)
+print(table(df$`What is your primary involvement in science communication? Tick only one box.`))
+ggplot(df, aes(x=`What is your primary involvement in science communication? Tick only one box.`))+geom_bar()+theme(axis.text = element_text(size=9))
+
+```
+
+Mode and tabulations for Q2.
+```{r}
+
+print(table(df$`How else are you involved in science communication (other than your primary role above)? Please tick all that apply.`))
+modeav(df$`How else are you involved in science communication (other than your primary role above)? Please tick all that apply.`, na.rm = T)
+ggplot(df, aes(x=`How else are you involved in science communication (other than your primary role above)? Please tick all that apply.`))+geom_bar()+theme(axis.text = element_text(size=9))
+```
+
+Mode and tabulations for Q3.
+```{r, fig.width=11, fig.height=5}
+
+table(df$`What sector are you mostly employed in? Tick only one box.`)
+modeav(df$`What sector are you mostly employed in? Tick only one box.`, na.rm = T)
+ggplot(df, aes(x=`What sector are you mostly employed in? Tick only one box.`))+geom_bar()+theme(axis.text = element_text(size=7))
+```
+
+Mode and tabulations for Q4.
+```{r}
+
+table(df$`What country are you based in?`)
+modeav(df$`What country are you based in?`, na.rm = T)
+
+ggplot(df, aes(x=`What country are you based in?`))+geom_bar()+theme(axis.text = element_text(size=9, angle = 90))
+```
+
+Mode and tabulations for Q5 and numerical transformations and calculations, so 0 = no importance, 4=very high
+```{r}
+
+table(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`)
+modeav(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`, na.rm = T)
+df$Q5nm<-ifelse(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`=="No importance", 0, ifelse(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`=="Little importance", 1,ifelse(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`=="Average importance", 2,ifelse(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`=="High importance", 3,ifelse(df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`=="Very high importance", 4, NA)))))
+mean(df$Q5nm, na.rm=T)
+
+ggplot(df, aes(x=`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`))+geom_bar()
+```
+
+
+
+
+
+Mode and tabulations for Q6.
+```{r}
+
+table(df$`Do you have any other comments on the science communication or engagement challenges we currently face?`)
+modeav(df$`Do you have any other comments on the science communication or engagement challenges we currently face?`, na.rm = T)
+```
+
+
+Mode and tabulations for Q7, numeric transformations and calculations. So none =0, a lot =4
+```{r}
+
+table(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`)
+modeav(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`, na.rm = T)
+df$Q7nm<-ifelse(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`=="None", 0, ifelse(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`=="Little", 1,ifelse(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`=="Some", 2,ifelse(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`=="Extensive", 3,ifelse(df$`How much did your activities involve interacting with policymakers or aiming to influence them?`=="A lot", 4, NA)))))
+mean(df$Q7nm, na.rm=T)
+
+ggplot(df, aes(x=`How much did your activities involve interacting with policymakers or aiming to influence them?`))+geom_bar()+theme(axis.text = element_text(size=9, angle = 90))
+```
+
+Mode and tabulations for Q8,  numeric transformations and calculations. So a little =0, a To a high degree = 3
+```{r}
+
+table(df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`)
+modeav(df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`, na.rm = T)
+
+df$Q8nm<-ifelse(df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`=="A little", 0, ifelse(df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`=="An average amount", 1, ifelse(df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`=="Extensive", 2, ifelse(df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`=="To a high degree", 3, NA))))
+mean(df$Q8nm, na.rm=T)
+
+ggplot(df, aes(x=`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`))+geom_bar()+theme(axis.text = element_text(size=9))
+```
+
+
+Cross-tab and chisq for Q1 and Q2.
+We see that pvalue is less than 0.05 therefore there is a significant connection between Q1 and Q2. 
+But if we will take on a Q2 levels, we will see that there only one type of real levels, what means that this test doesn't make a sense with this type of data.
+```{r}
+chiout<-chisq.test(df$`What is your primary involvement in science communication? Tick only one box.`, df$`How else are you involved in science communication (other than your primary role above)? Please tick all that apply.`)
+chiout
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`How else are you involved in science communication (other than your primary role above)? Please tick all that apply.`)
+
+
+```
+
+Crosstab Q1-Q3
+```{r, fig.width=17, fig.height=5.8}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`What sector are you mostly employed in? Tick only one box.`)
+
+
+ggplot(df, aes(`What is your primary involvement in science communication? Tick only one box.`, ..count..))+geom_bar(aes(fill=`What sector are you mostly employed in? Tick only one box.`), position = "dodge")+theme(axis.text = element_text(size=6))
+```
+
+Crosstab Q1-Q4
+```{r, fig.width=17, fig.height=5.8}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`What country are you based in?`)
+
+
+ggplot(df, aes(`What is your primary involvement in science communication? Tick only one box.`, ..count..))+geom_bar(aes(fill=`What country are you based in?`), position = "dodge")+theme(axis.text = element_text(size=6))
+```
+
+
+Crosstab Q1-Regions(0 means North region, 1 means South)
+```{r, fig.width=17, fig.height=5.8}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$South)
+
+ggplot(df, aes(`What is your primary involvement in science communication? Tick only one box.`, ..count..))+geom_bar(aes(fill=South), position = "stack")+theme(axis.text = element_text(size=6))
+```
+
+Crosstab Q1-Q5
+```{r}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`)
+```
+
+
+
+Crosstab Q1-Q6
+```{r}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`Do you have any other comments on the science communication or engagement challenges we currently face?`)
+```
+
+Crosstab Q1-Q7
+```{r}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`How much did your activities involve interacting with policymakers or aiming to influence them?`)
+```
+
+Crosstab Q1-Q8
+```{r}
+table(df$`What is your primary involvement in science communication? Tick only one box.`, df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`)
+```
+
+
+
+Crosstab Q3-Q2
+```{r}
+table(df$`How else are you involved in science communication (other than your primary role above)? Please tick all that apply.`, df$`What sector are you mostly employed in? Tick only one box.`)
+```
+
+Crosstab Q3-Q4
+```{r}
+table(df$`What sector are you mostly employed in? Tick only one box.`, df$`What country are you based in?`)
+```
+
+
+Crosstab Q3-Regions(0 means North region, 1 means South)
+```{r}
+table(df$`What sector are you mostly employed in? Tick only one box.`, df$South)
+```
+
+Crosstab Q3-Q5
+```{r}
+table(df$`What sector are you mostly employed in? Tick only one box.`, df$`Please rate how important each of the following challenges are for science communication from 'no importance' to 'very high importance'.`)
+```
+
+
+
+Crosstab Q3-Q6
+```{r}
+table(df$`What sector are you mostly employed in? Tick only one box.`, df$`Do you have any other comments on the science communication or engagement challenges we currently face?`)
+```
+
+Crosstab Q3-Q7
+```{r}
+table(df$`What sector are you mostly employed in? Tick only one box.`, df$`How much did your activities involve interacting with policymakers or aiming to influence them?`)
+```
+
+Crosstab Q3-Q8
+```{r}
+table(df$`What sector are you mostly employed in? Tick only one box.`, df$`Please rate how useful you think science communication could be for policymakers for each of the following items, from 'not at all' to 'extensive'.`)
+```
+
+```{r}
+
+```
+
